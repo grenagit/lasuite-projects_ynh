@@ -1,0 +1,94 @@
+#!/bin/bash
+#!/bin/bash
+
+#=================================================
+# IMPORT GENERIC HELPERS
+#=================================================
+
+source /usr/share/yunohost/helpers
+
+#=================================================
+# INITIALIZE AND STORE SETTINGS
+#=================================================
+
+secret=$(ynh_string_random --length=50)
+email=$(ynh_user_get_info --username=$admin --key=mail)
+timezone="$(timedatectl show --value --property=Timezone)"
+fullname=$(ynh_user_get_info --username=$admin --key=fullname)
+
+ynh_app_setting_set --key=password --value="$password"
+ynh_app_setting_set --key=fullname --value=$fullname
+
+#=================================================
+# DOWNLOAD, CHECK AND UNPACK SOURCE
+#=================================================
+ynh_script_progression "Setting up source files..."
+
+# Download, check integrity, uncompress and patch the source from manifest.toml
+ynh_setup_source --dest_dir="$install_dir"
+
+#=================================================
+# APP INITIAL CONFIGURATION
+#=================================================
+ynh_script_progression "Adding $app's configuration files..."
+
+ynh_config_add --template=".env" --destination="$install_dir/.env"
+
+#=================================================
+# SYSTEM CONFIGURATION
+#=================================================
+ynh_script_progression "Adding system configurations related to $app..."
+
+# Create a dedicated NGINX config using the conf/nginx.conf template
+ynh_config_add_nginx
+
+# Create a dedicated systemd config
+ynh_config_add_systemd
+
+# Use logrotate to manage application logfile(s)
+ynh_config_add_logrotate
+
+yunohost service add "$app" --description="Realtime kanban board for workgroups" --log="/var/log/$app/$app.log"
+
+# Create a dedicated Fail2Ban config
+ynh_config_add_fail2ban --logpath="/var/log/$app/$app.log" --failregex="^(.*) Invalid (email or username:|password!) (\"(.*)\"!)? ?\(IP: <ADDR>\)$"
+
+#=================================================
+# INSTALL PLANKA
+#=================================================
+ynh_script_progression "Installing $app..."
+
+pushd $install_dir
+	# Install dependencies
+	ynh_exec_as_app npm install
+
+	# Build
+	ynh_exec_as_app npm run client:build
+
+	# Move the built frontend to the public server folder
+	rm -rf server/public/
+	mv client/build server/public
+
+	# Pick up the index.html to be used as templating
+	cp server/public/index.html server/views/index.ejs
+
+	# Clean up what's no longer needed
+	rm -rf client config docker-* Docker* package* *.md
+
+	# Bring everything to the root
+	mv server/* ./
+popd
+
+#=================================================
+# START SYSTEMD SERVICE
+#=================================================
+ynh_script_progression "Starting $app's systemd service..."
+
+# Start a systemd service
+ynh_systemctl --service="$app" --action="start" --log_path="systemd"
+
+#=================================================
+# END OF SCRIPT
+#=================================================
+
+ynh_script_progression "Installation of $app completed"

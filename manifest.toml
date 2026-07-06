@@ -1,0 +1,93 @@
+#:schema https://raw.githubusercontent.com/YunoHost/apps/master/schemas/manifest.v2.schema.json
+
+packaging_format = 2
+
+id = "lasuite-projects"
+name = "La Suite - Projects"
+description.en = "Plan and collaborate on live projects"
+description.fr = "Planifier et collaborer sur des projets en direct"
+
+version = "1.2.0~ynh1"
+
+maintainers = []
+
+[upstream]
+license = "AGPL-3.0"
+website = "https://projets.suite.anct.gouv.fr/"
+code = "https://github.com/suitenumerique/projects"
+
+[integration]
+yunohost = ">= 12.1.38"
+helpers_version = "2.1"
+architectures = ["amd64", "arm64", "armhf"]
+multi_instance = true
+
+ldap = false
+sso = false
+
+disk = "50M"
+ram.build = "500M"
+ram.runtime = "50M"
+
+[install]
+    #[install.dex]
+    #type = "app"
+    #filter = "match(id, '^(dex)(__[0-9+])?$')"
+    #ask.en = "Select the Dex app that will handle authentication."
+    #ask.fr = "Sélectionnez l'app Dex qui gérera l'authentification."
+    #help.en = "You need to have at least one instance of Dex installed beforehand on your server."
+    #help.fr = "Vous devez avoir au moins une instance de Dex préalablement installée sur votre serveur."
+    
+    [install.domain]
+    type = "domain"
+
+    [install.init_main_permission]
+    type = "group"
+    default = "visitors"
+
+    [install.admin]
+    type = "user"
+
+    [install.password]
+    type = "password"
+    
+    [install.language]
+    ask.en = "Choose the application language"
+    ask.fr = "Choisissez la langue de l'application"
+    type = "select"
+    choices = ["en-us", "fr-fr", "de-de", "nl-nl", "es-es"]
+    default = "en-us"
+
+[resources]
+
+    [resources.sources]
+
+    [resources.sources.main]
+    url = "https://github.com/suitenumerique/projects/archive/refs/tags/v1.2.0.zip"
+    sha256 = "ac338231b99538eb204b53a524c4eb8a2bd1d19aeac549276af1a9cbb07f3d3b"
+    autoupdate.strategy = "latest_github_tag"
+
+    [resources.system_user]
+    allow_email = true
+
+    [resources.install_dir]
+
+    [resources.permissions]
+    main.url = "/"
+    api.url = "/api"
+    api.allowed = "visitors"
+    api.auth_header = false
+    api.show_tile = false
+    api.protected = true
+
+    [resources.ports]
+    socket.default = 1337
+    
+    [resources.apt]
+    packages = "postgresql, postgresql-contrib, build-essential, python3-venv"
+
+    [resources.database]
+    type = "postgresql"
+
+    [resources.nodejs]
+    version = "22"
